@@ -3,17 +3,7 @@ package dev.zio.quickstart.transaction
 import java.util.UUID
 import zio.json.*
 
-case class Transaction(src: String, dst: String, amount: Int){
-  def getSrc: String = {
-    src
-  }
-  def getDst: String = {
-    dst
-  }
-  def getAmount: Int = {
-    amount
-  }
-}
+case class Transaction(src: Int, dst: Int, amount: Int)
 
 object Transaction:
   given JsonEncoder[Transaction] =

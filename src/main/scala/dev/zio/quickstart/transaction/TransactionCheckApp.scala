@@ -1,22 +1,24 @@
 package dev.zio.quickstart.transaction
 
-import zhttp.http.*
 import zio.*
 import zio.json.*
+import zhttp.http.*
+
 import scala.io.Source
 
+val blackList = Source.fromResource("blacklist.txt").getLines().toSet.map(_.toInt)
+
 object TransactionCheckApp:
-  def transactionCheck: Http[Any, Nothing, Request, Response] =
+
+  def apply(): Http[Any, Throwable, Request, Response] =
     Http.collectZIO[Request] {
-      case Method.POST -> !! / "transaction-check" =>
-        val data = """{"src": "1", "dst": "5", amount: 10}""".fromJson[Transaction]
-        val blackList = Source.fromFile("blacklist.txt")
+      case req@Method.POST -> !! / "transaction-check" =>
         for
-          r <- blackList.getLines() match
-            case Right(transaction) =>
-              if (transaction.getSrc == r || transaction.getDst == r)
-                Response.text("Cancel").setStatus(Status.BadRequest)
-              else Response.text("Success")
-            case Left(value) => "Failed to take JSON"
-        yield r
+          extraction <- req.bodyAsString
+            .map(_.fromJson[Transaction])
+          transaction <- ZIO.fromEither(extraction).mapError(error => new Throwable(error))
+          containsBadBoy <- ZIO.succeed(!blackList.exists(id => id == transaction.src || id == transaction.dst))
+          four <- ZIO.from(if(containsBadBoy){"success"} else{"cansel"})
+          result <- ZIO.from(Response.json(four))
+        yield  result
     }
